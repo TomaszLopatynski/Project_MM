@@ -1,5 +1,4 @@
 import math
-import os
 from tkinter import *
 import random
 from itertools import chain
@@ -57,6 +56,7 @@ class GUI(Frame):
         self.b = Canvas()
         self.grainColour = []
         self.clickedColours = []
+        self.newColors = []
 
         self.entryX = Entry(self.MiniFrame1)
         self.entryY = Entry(self.MiniFrame1)
@@ -74,8 +74,8 @@ class GUI(Frame):
         self.varStructure = StringVar(self.MiniFrame4)
 
         self.nodeSize = 5
-        self.sizeX = 100
-        self.sizeY = 100
+        self.sizeX = 70
+        self.sizeY = 70
         self.grains = 0
         self.inclusions = 0
         self.rectangle = []
@@ -236,6 +236,7 @@ class GUI(Frame):
                 self.rectangle[i][j] = self.b.create_rectangle(x1, y1, x2, y2, fill="white", width=0)
 
     def randomGrain(self):
+        self.grainColour = []
         try:
             self.grains = int(self.entryGrains.get())
         except ValueError:
@@ -278,8 +279,9 @@ class GUI(Frame):
                             boolMatrix[i][j] = True
                 for i in range(self.sizeX):
                     for j in range(self.sizeY):
-                        if self.b.itemcget(self.rectangle[i][j], "fill") != "white" and boolMatrix[i][j] and self.b.itemcget(self.rectangle[i][j], "fill") not in self.clickedColours:
-                            self.neighbourhood(i, j, self.b.itemcget(self.rectangle[i][j], "fill"), rnd)
+                        if self.b.itemcget(self.rectangle[i][j], "fill") != "white" and boolMatrix[i][j] and \
+                                self.b.itemcget(self.rectangle[i][j], "fill") not in self.clickedColours:
+                            self.neighbourhood(i, j, "white", self.b.itemcget(self.rectangle[i][j], "fill"), rnd)
                 state = not all(chain(*boolMatrix))
                 self.b.update()
         elif varSimulation == "SC":
@@ -300,20 +302,41 @@ class GUI(Frame):
                     self.b.itemconfig(self.rectangle[i[0]][i[1]], fill=i[2], stipple="")
                 self.b.update()
 
-    def mooreAbs(self, i, j, colour):
-        for x in range(-1, 2):
-            for y in range(-1, 2):
-                if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
-                    if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == "white":
-                        self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
+    def mooreAbs(self, i, j, background, colour):
+        counter = 0
+        if background != "white":
+            if self.clickedColours:
+                for x in range(len(self.clickedColours)):
+                    if self.clickedColours[x] == background:
+                        counter = x
+                for x in range(-1, 2):
+                    for y in range(-1, 2):
+                        if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
+                            if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background and self.b.itemcget(self.rectangle[i][j], "fill") in self.newColors[counter]:
+                                self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
+            else:
+                for x in range(len(self.grainColour)):
+                    if self.grainColour[x] == background:
+                        counter = x
+                for x in range(-1, 2):
+                    for y in range(-1, 2):
+                        if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
+                            if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background and self.b.itemcget(self.rectangle[i][j], "fill") in self.newColors[counter]:
+                                self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
+        else:
+            for x in range(-1, 2):
+                for y in range(-1, 2):
+                    if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
+                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background:
+                            self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
 
-    def moorePer(self, i, j, colour):
+    def moorePer(self, i, j, background, colour):
         boundI = 0
         boundJ = 0
         for x in range(-1, 2):
             for y in range(-1, 2):
                 if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
-                    if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == "white":
+                    if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background:
                         self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
                 else:
                     if i + x < 0:
@@ -336,21 +359,36 @@ class GUI(Frame):
                     elif j + y < self.sizeY:
                         boundJ = j + y - 1
 
-                    if self.b.itemcget(self.rectangle[boundI][boundJ], "fill") == "white":
+                    if self.b.itemcget(self.rectangle[boundI][boundJ], "fill") == background:
                         self.b.itemconfig(self.rectangle[boundI][boundJ], fill=colour, stipple="")
 
-    def vonNeumannAbs(self, i, j, colour):
-        arr = [1, 3, 4, 5, 7]
-        counter = 0
-        for x in range(-1, 2):
-            for y in range(-1, 2):
-                if counter in arr:
-                    if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
-                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == "white":
-                            self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
-                counter = counter + 1
+    def vonNeumannAbs(self, i, j, background, colour):
+        ctr = 0
+        if background != "white":
+            for x in range(len(self.grainColour)):
+                if self.grainColour[x] == background:
+                    ctr = x
+            arr = [1, 3, 4, 5, 7]
+            counter = 0
+            for x in range(-1, 2):
+                for y in range(-1, 2):
+                    if counter in arr:
+                        if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
+                            if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background and self.b.itemcget(self.rectangle[i][j], "fill") in self.newColors[ctr]:
+                                self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
+                    counter = counter + 1
+        else:
+            arr = [1, 3, 4, 5, 7]
+            counter = 0
+            for x in range(-1, 2):
+                for y in range(-1, 2):
+                    if counter in arr:
+                        if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
+                            if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background:
+                                self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
+                    counter = counter + 1
 
-    def vonNeumannPer(self, i, j, colour):
+    def vonNeumannPer(self, i, j, background, colour):
         arr = [1, 3, 4, 5, 7]
         counter = 0
         boundI = 0
@@ -359,7 +397,7 @@ class GUI(Frame):
             for y in range(-1, 2):
                 if counter in arr:
                     if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
-                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == "white":
+                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background:
                             self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
                     else:
                         if i + x < 0:
@@ -382,11 +420,51 @@ class GUI(Frame):
                         elif j + y < self.sizeY:
                             boundJ = j + y - 1
 
-                        if self.b.itemcget(self.rectangle[boundI][boundJ], "fill") == "white":
+                        if self.b.itemcget(self.rectangle[boundI][boundJ], "fill") == background:
                             self.b.itemconfig(self.rectangle[boundI][boundJ], fill=colour, stipple="")
                 counter = counter + 1
 
-    def pentagonalAbs(self, i, j, colour, rnd):
+    def pentagonalAbs(self, i, j, background, colour, rnd):
+        ctr = 0
+        if background != "white":
+            for x in range(len(self.grainColour)):
+                if self.grainColour[x] == background:
+                    ctr = x
+            if rnd == 0:
+                arr = [0, 1, 2, 3, 4, 5]
+            elif rnd == 1:
+                arr = [3, 4, 5, 6, 7, 8]
+            elif rnd == 2:
+                arr = [1, 2, 4, 5, 7, 8]
+            else:
+                arr = [0, 1, 3, 4, 6, 7]
+            counter = 0
+            for x in range(-1, 2):
+                for y in range(-1, 2):
+                    if counter in arr:
+                        if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
+                            if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background and self.b.itemcget(self.rectangle[i][j], "fill") in self.newColors[ctr]:
+                                self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
+                    counter = counter + 1
+        else:
+            if rnd == 0:
+                arr = [0, 1, 2, 3, 4, 5]
+            elif rnd == 1:
+                arr = [3, 4, 5, 6, 7, 8]
+            elif rnd == 2:
+                arr = [1, 2, 4, 5, 7, 8]
+            else:
+                arr = [0, 1, 3, 4, 6, 7]
+            counter = 0
+            for x in range(-1, 2):
+                for y in range(-1, 2):
+                    if counter in arr:
+                        if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
+                            if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background:
+                                self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
+                    counter = counter + 1
+
+    def pentagonalPer(self, i, j, background, colour, rnd):
         if rnd == 0:
             arr = [0, 1, 2, 3, 4, 5]
         elif rnd == 1:
@@ -396,31 +474,13 @@ class GUI(Frame):
         else:
             arr = [0, 1, 3, 4, 6, 7]
         counter = 0
-        for x in range(-1, 2):
-            for y in range(-1, 2):
-                if counter in arr:
-                    if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
-                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == "white":
-                            self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
-                counter = counter + 1
-
-    def pentagonalPer(self, i, j, colour, rnd):
-        if rnd == 0:
-            arr = [0, 1, 2, 3, 4, 5]
-        elif rnd == 1:
-            arr = [3, 4, 5, 6, 7, 8]
-        elif rnd == 2:
-            arr = [1, 2, 4, 5, 7, 8]
-        else:
-            arr = [0, 1, 3, 4, 6, 7]
-        counter = 0
         boundI = 0
         boundJ = 0
         for x in range(-1, 2):
             for y in range(-1, 2):
                 if counter in arr:
                     if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
-                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == "white":
+                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background:
                             self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
                     else:
                         if i + x < 0:
@@ -443,25 +503,43 @@ class GUI(Frame):
                         elif j + y < self.sizeY:
                             boundJ = j + y - 1
 
-                        if self.b.itemcget(self.rectangle[boundI][boundJ], "fill") == "white":
+                        if self.b.itemcget(self.rectangle[boundI][boundJ], "fill") == background:
                             self.b.itemconfig(self.rectangle[boundI][boundJ], fill=colour, stipple="")
                 counter = counter + 1
 
-    def hexagonalAbs(self, i, j, colour, rnd):
-        if rnd == 0:
-            arr = [1, 2, 3, 4, 5, 6, 7]
+    def hexagonalAbs(self, i, j, background, colour, rnd):
+        ctr = 0
+        if background != "white":
+            for x in range(len(self.grainColour)):
+                if self.grainColour[x] == background:
+                    ctr = x
+            if rnd == 0:
+                arr = [1, 2, 3, 4, 5, 6, 7]
+            else:
+                arr = [0, 1, 3, 4, 5, 7, 8]
+            counter = 0
+            for x in range(-1, 2):
+                for y in range(-1, 2):
+                    if counter in arr:
+                        if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
+                            if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background and self.b.itemcget(self.rectangle[i][j], "fill") in self.newColors[ctr]:
+                                self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
+                    counter = counter + 1
         else:
-            arr = [0, 1, 3, 4, 5, 7, 8]
-        counter = 0
-        for x in range(-1, 2):
-            for y in range(-1, 2):
-                if counter in arr:
-                    if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
-                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == "white":
-                            self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
-                counter = counter + 1
+            if rnd == 0:
+                arr = [1, 2, 3, 4, 5, 6, 7]
+            else:
+                arr = [0, 1, 3, 4, 5, 7, 8]
+            counter = 0
+            for x in range(-1, 2):
+                for y in range(-1, 2):
+                    if counter in arr:
+                        if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
+                            if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background:
+                                self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
+                    counter = counter + 1
 
-    def hexagonalPer(self, i, j, colour, rnd):
+    def hexagonalPer(self, i, j, background, colour, rnd):
         if rnd == 0:
             arr = [1, 2, 3, 4, 5, 6, 7]
         else:
@@ -473,7 +551,7 @@ class GUI(Frame):
             for y in range(-1, 2):
                 if counter in arr:
                     if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
-                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == "white":
+                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") == background:
                             self.b.itemconfig(self.rectangle[i + x][j + y], fill=colour, stipple="")
                     else:
                         if i + x < 0:
@@ -496,7 +574,7 @@ class GUI(Frame):
                         elif j + y < self.sizeY:
                             boundJ = j + y - 1
 
-                        if self.b.itemcget(self.rectangle[boundI][boundJ], "fill") == "white":
+                        if self.b.itemcget(self.rectangle[boundI][boundJ], "fill") == background:
                             self.b.itemconfig(self.rectangle[boundI][boundJ], fill=colour, stipple="")
                 counter = counter + 1
 
@@ -509,27 +587,27 @@ class GUI(Frame):
         else:
             return
 
-    def neighbourhood(self, i, j, colour, rnd):
+    def neighbourhood(self, i, j, background, colour, rnd):
         varNeighbor = self.varNeighbor.get()
         varBoundary = self.varBoundary.get()
         if varBoundary == "Absorbing":
             if varNeighbor == "Moore":
-                self.mooreAbs(i, j, colour)
+                self.mooreAbs(i, j, background, colour)
             elif varNeighbor == "VonNeumann":
-                self.vonNeumannAbs(i, j, colour)
+                self.vonNeumannAbs(i, j, background, colour)
             elif varNeighbor == "PentagonalRandom":
-                self.pentagonalAbs(i, j, colour, rnd)
+                self.pentagonalAbs(i, j, background, colour, rnd)
             elif varNeighbor == "HexagonalRandom":
-                self.hexagonalAbs(i, j, colour, rnd)
+                self.hexagonalAbs(i, j, background, colour, rnd)
         elif varBoundary == "Periodic":
             if varNeighbor == "Moore":
-                self.moorePer(i, j, colour)
+                self.moorePer(i, j, background, colour)
             elif varNeighbor == "VonNeumann":
-                self.vonNeumannPer(i, j, colour)
+                self.vonNeumannPer(i, j, background, colour)
             elif varNeighbor == "PentagonalRandom":
-                self.pentagonalPer(i, j, colour, rnd)
+                self.pentagonalPer(i, j, background, colour, rnd)
             elif varNeighbor == "HexagonalRandom":
-                self.hexagonalPer(i, j, colour, rnd)
+                self.hexagonalPer(i, j, background, colour, rnd)
 
     def shapeControl(self, i, j, percentage):
         colArrR1 = [None] * 8
@@ -738,7 +816,7 @@ class GUI(Frame):
             state = False
         if self.rgb2hex(r, g, b) in self.clickedColours and state:
             self.clickedColours.remove(self.rgb2hex(r, g, b))
-        if len(self.clickedColours) >= int(self.entryGrains.get()):
+        if len(self.clickedColours) >= len(self.grainColour):
             self.clickedColours = []
         self.selection()
 
@@ -755,12 +833,119 @@ class GUI(Frame):
                 if not self.clickedColours:
                     self.b.itemconfig(self.rectangle[i][j], stipple="")
 
+    def randomGrainStructure(self):
+        self.newColors = []
+        try:
+            self.grains = int(self.entryGrains.get())
+        except ValueError:
+            self.grains = 0
+        if self.clickedColours:
+            for a in self.clickedColours:
+                newRemembered = []
+                for b in range(self.grains):
+                    rememberedColor = []
+                    for i in range(self.sizeX):
+                        for j in range(self.sizeY):
+                            if self.b.itemcget(self.rectangle[i][j], "fill") == a:
+                                rememberedColor.append([i, j])
+                    state = True
+                    while state:
+                        rand = random.randint(0, len(rememberedColor) - 1)
+                        if self.b.itemcget(self.rectangle[rememberedColor[rand][0]][rememberedColor[rand][1]],
+                                           "fill") != a:
+                            state = True
+                            continue
+                        else:
+                            colour = self.random_color()
+                            newRemembered.append(colour)
+                            self.b.itemconfig(self.rectangle[rememberedColor[rand][0]][rememberedColor[rand][1]],
+                                              fill=colour, stipple="")
+                            state = False
+                self.newColors.append(newRemembered)
+        else:
+            for a in self.grainColour:
+                newRemembered = []
+                for b in range(self.grains):
+                    rememberedColor = []
+                    for i in range(self.sizeX):
+                        for j in range(self.sizeY):
+                            if self.b.itemcget(self.rectangle[i][j], "fill") == a:
+                                rememberedColor.append([i, j])
+                    state = True
+                    while state:
+                        rand = random.randint(0, len(rememberedColor) - 1)
+                        if self.b.itemcget(self.rectangle[rememberedColor[rand][0]][rememberedColor[rand][1]], "fill") != a:
+                            state = True
+                            continue
+                        else:
+                            colour = self.random_color()
+                            newRemembered.append(colour)
+                            self.b.itemconfig(self.rectangle[rememberedColor[rand][0]][rememberedColor[rand][1]], fill=colour, stipple="")
+                            state = False
+                self.newColors.append(newRemembered)
+
+    def grainGrowthStructure(self):
+        varSimulation = self.varSimulations.get()
+        state = True
+        if self.clickedColours:
+            if varSimulation == "CA":
+                boolMatrix = [[False for x in range(self.sizeX)] for y in range(self.sizeY)]
+                rnd = self.rndChoose()
+                while state:
+                    for i in range(self.sizeX):
+                        for j in range(self.sizeY):
+                            if self.b.itemcget(self.rectangle[i][j], "fill") not in self.clickedColours and self.b.itemcget(self.rectangle[i][j], "fill") != "#010000":
+                                boolMatrix[i][j] = True
+                    for i in range(self.sizeX):
+                        for j in range(self.sizeY):
+                            for x in self.clickedColours:
+                                if boolMatrix[i][j]:
+                                    self.neighbourhood(i, j, x, self.b.itemcget(self.rectangle[i][j], "fill"), rnd)
+                    state = not all(chain(*boolMatrix))
+                    self.b.update()
+            for i in self.clickedColours:
+                self.grainColour.remove(i)
+            for i in self.newColors:
+                for j in i:
+                    self.grainColour.append(j)
+            self.clickedColours = []
+            for i in range(self.sizeX):
+                for j in range(self.sizeY):
+                    self.b.itemconfig(self.rectangle[i][j], stipple="")
+        else:
+            if varSimulation == "CA":
+                boolMatrix = [[False for x in range(self.sizeX)] for y in range(self.sizeY)]
+                rnd = self.rndChoose()
+                while state:
+                    for i in range(self.sizeX):
+                        for j in range(self.sizeY):
+                            if self.b.itemcget(self.rectangle[i][j], "fill") not in self.grainColour and self.b.itemcget(self.rectangle[i][j], "fill") != "#010000":
+                                boolMatrix[i][j] = True
+                    for i in range(self.sizeX):
+                        for j in range(self.sizeY):
+                            for x in range(len(self.grainColour)):
+                                color = self.grainColour[x]
+                                if boolMatrix[i][j]:
+                                    self.neighbourhood(i, j, color, self.b.itemcget(self.rectangle[i][j], "fill"), rnd)
+                    state = not all(chain(*boolMatrix))
+                    self.b.update()
+                self.grainColour = []
+                for i in self.newColors:
+                    for j in i:
+                        self.grainColour.append(j)
+                self.clickedColours = []
+
+    def clearWithoutColourStructure(self):
+        for i in range(self.sizeX):
+            for j in range(self.sizeY):
+                if self.b.itemcget(self.rectangle[i][j], "fill") in self.clickedColours:
+                    self.b.itemconfig(self.rectangle[i][j], fill="white")
+
     def structure(self):
         varStructure = self.varStructure.get()
         if varStructure == "Substructure":
-            self.clearWithoutColour()
-            self.randomGrain()
-            self.grainGrowth()
+            self.randomGrainStructure()
+            self.grainGrowthStructure()
             self.clickedColours = []
         elif varStructure == "Dual-Phase":
             for i in range(self.sizeX):
@@ -805,7 +990,8 @@ class GUI(Frame):
                             for x in range(-1, 2):
                                 for y in range(-1, 2):
                                     if self.sizeX > (i + x) >= 0 and self.sizeY > (j + y) >= 0:
-                                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") != self.b.itemcget(self.rectangle[i][j], "fill"):
+                                        if self.b.itemcget(self.rectangle[i + x][j + y], "fill") != \
+                                                self.b.itemcget(self.rectangle[i][j], "fill"):
                                             remembered[i][j] = True
             for i in range(self.sizeX):
                 for j in range(self.sizeY):
@@ -850,7 +1036,8 @@ class GUI(Frame):
 
         for i in range(1, rgb_im.size[0]):
             for j in range(rgb_im.size[1]):
-                if rgb_im.getpixel((i, j - 1)) == (0, 0, 0) and rgb_im.getpixel((i, j)) != (0, 0, 0) and rgb_im.getpixel((i - 1, j)) == (0, 0, 0):
+                if rgb_im.getpixel((i, j - 1)) == (0, 0, 0) and \
+                        rgb_im.getpixel((i, j)) != (0, 0, 0) and rgb_im.getpixel((i - 1, j)) == (0, 0, 0):
                     colours.append(rgb(rgb_im.getpixel((i, j))[0],
                                        rgb_im.getpixel((i, j))[1],
                                        rgb_im.getpixel((i, j))[2]))
